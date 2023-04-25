@@ -1,0 +1,32 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+.idea/
+go.mod-e
+*.rdb
+/*.db
+.swp
+.vscode
+
+# Integration test folders.
+/bin
+/logs
+/local
+/integration/generic-linode/*.json
+/static
+/dmsgpty
+/deb
+/packaging
+/apps
+
+/*config.json
+/shellcheck
+/tmp
+
+# react folders
+node_modules
+/pkg/node-visualizer/web/build

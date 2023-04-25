@@ -1,0 +1,93 @@
+{
+	"version": "v1.3.6-180-g7326eaec",
+	"sk": "0e17cd505d81f998950e22864ae4692249124441bd9148b801f76f1595ac688f",
+	"pk": "031b80cd5773143a39d940dc0710b93dcccc262a85108018a7a95ab9af734f8055",
+	"dmsg": {
+		"discovery": "http://dmsg-discovery:9090",
+		"sessions_count": 1,
+		"servers": []
+	},
+	"dmsgpty": {
+		"dmsg_port": 22,
+		"cli_network": "unix",
+		"cli_address": "/tmp/dmsgpty.sock"
+	},
+	"skywire-tcp": {
+		"pk_table": null,
+		"listening_address": ":7777"
+	},
+	"transport": {
+		"discovery": "http://transport-discovery:9091",
+		"address_resolver": "http://address-resolver:9093",
+		"public_autoconnect": false,
+		"transport_setup_nodes": null
+	},
+	"routing": {
+		"setup_nodes": [
+			"02603d53d49b6575a0b8cee05b70dd23c86e42cd6cba99af769d61a6196ea2bcb1"
+		],
+		"route_finder": "http://route-finder:9092",
+		"route_finder_timeout": "10s",
+		"min_hops": 0
+	},
+	"uptime_tracker": {
+		"addr": "http://uptime-tracker:9096"
+	},
+	"launcher": {
+		"service_discovery": "http://service-discovery:9098",
+		"apps": [
+			{
+				"name": "vpn-client",
+				"binary": "vpn-client",
+				"args": [
+					"-srv",
+					"024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
+					"-killswitch=false"
+				],
+				"auto_start": false,
+				"port": 43
+			},
+			{
+				"name": "skychat",
+				"binary": "skychat",
+				"args": [
+					"-addr",
+					":8001"
+				],
+				"auto_start": true,
+				"port": 1
+			},
+			{
+				"name": "skysocks-client",
+				"binary": "skysocks-client",
+				"args": [
+					"-srv",
+					"024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
+					"-addr",
+					":1080"
+				],
+				"auto_start": true,
+				"port": 13
+			},
+			{
+				"name": "vpn-server",
+				"binary": "vpn-server",
+				"auto_start": false,
+				"port": 44
+			}
+		],
+		"server_addr": ":5507",
+		"bin_path": "/apps"
+	},
+	"hypervisors": [
+		"0348c941c5015a05c455ff238af2e57fb8f914c399aab604e9abb5b32b91a4c1fe"
+	],
+	"cli_addr": "0.0.0.0:3435",
+	"log_level": "info",
+	"local_path": "./local",
+	"stun_servers": null,
+	"shutdown_timeout": "30s",
+	"restart_check_delay": "1s",
+	"is_public": false,
+	"persistent_transports": null
+}

@@ -1,0 +1,48 @@
+{
+	"version": "v0.2.0-1392-geff996ba",
+	"sk": "7a965e5a5d619d40aa632865ad9cb98356811eb412005c49943bfdc876bc6fed",
+	"pk": "0265d0c5076a62c39edc36f00e686a84c36e7379b41d0af44116239d64868170ff",
+	"dmsg": {
+		"discovery": "http://dmsg-discovery:9090",
+		"sessions_count": 1,
+		"servers": []
+	},
+	"transport": {
+		"discovery": "http://transport-discovery:9091",
+		"address_resolver": "http://address-resolver:9093",
+		"public_autoconnect": false,
+		"transport_setup_nodes": null
+	},
+	"routing": {
+		"setup_nodes": [
+			"02603d53d49b6575a0b8cee05b70dd23c86e42cd6cba99af769d61a6196ea2bcb1"
+		],
+		"route_finder": "http://route-finder:9092",
+		"route_finder_timeout": "10s",
+		"min_hops": 0
+	},
+	"uptime_tracker": {
+		"addr": "http://uptime-tracker:9096"
+	},
+	"launcher": {
+		"service_discovery": "http://service-discovery:9098",
+		"apps": [
+			{
+				"name": "vpn-client",
+				"auto_start": false,
+				"port": 43
+			}
+		],
+		"server_addr": "localhost:5511",
+		"bin_path": "./release"
+	},
+	"hypervisors": [],
+	"cli_addr": "localhost:3435",
+	"log_level": "info",
+	"local_path": "./local/network-monitor",
+	"stun_servers": null,
+	"shutdown_timeout": "10s",
+	"restart_check_delay": "1s",
+	"is_public": false,
+	"persistent_transports": null
+}

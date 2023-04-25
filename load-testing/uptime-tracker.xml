@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/usr/share/tsung/tsung-1.0.dtd">
+	<tsung loglevel="debug" version="1.0">
+		<clients>
+			<client host="localhost" maxusers="3000" use_controller_vm="true">
+			</client>
+		</clients>
+		<servers>
+			<server host="uptime.tracker.skywire.cc" port="80" type="tcp"></server>
+		</servers>
+		<load>
+			<arrivalphase phase="1" duration="10" unit="minute">
+				<users interarrival="1" unit="second"></users>
+			</arrivalphase>
+		</load>
+		<options>
+			<option name="file_server" id="pks_list" value="/root/pks.csv" />
+		</options>
+		<sessions>
+			<session name="uptime-tracker" probability="100" type="ts_http">
+				<setdynvars sourcetype="file" fileid="pks_list" delimiter=";" order="iter"> <var name="pk" /> </setdynvars>
+				<for var="counter" from="1" to="1000" incr="0">
+					<request subst="true">
+						<http url="/update" method="GET" version="1.1">
+							<http_header name="SW-Public" value="%%_pk%%"/>
+							<http_header name="SW-Nonce" value="1"/>
+						</http>
+					</request>
+				</for>
+			</session>
+		</sessions>
+	</tsung>
