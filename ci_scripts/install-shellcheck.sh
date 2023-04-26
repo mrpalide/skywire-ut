@@ -9,5 +9,5 @@ curl -L -o shellcheck-stable.tar.xz "https://github.com/koalaman/shellcheck/rele
 
 tar -xvf shellcheck-stable.tar.xz -C ./scheck
 
-mv ./scheck/shellcheck-stable/shellcheck ./shellcheck
+mv ./scheck/shellcheck-v0.9.0/shellcheck ./shellcheck
 rm -rf ./scheck ./shellcheck-stable.tar.xz
