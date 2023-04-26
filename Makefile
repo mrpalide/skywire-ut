@@ -44,7 +44,6 @@ export REGISTRY=${DOCKER_REGISTRY}
 dep: ## Sorts dependencies
 #	GO111MODULE=on GOPRIVATE=github.com/skycoin/* go get -v github.com/skycoin/skywire@master
 	GO111MODULE=on GOPRIVATE=github.com/skycoin/* go mod vendor -v
-	yarn --cwd ./pkg/node-visualizer/web install
 
 format: dep ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	goimports -w -local github.com/skycoin/skywire-ut ./pkg
