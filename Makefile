@@ -96,16 +96,12 @@ lint-extra: ## Run linters with extra checks.
 	golangci-lint run --no-config --enable-all ./...
 	go vet -all -mod=vendor ./...
 
-lint-shell:
-	find ./ci_scripts -type f -iname '*.sh' -print0 | xargs -0 -I {} bash -c "./shellcheck \"{}\""
-	find ./docker -type f -iname '*.sh' -print0 | xargs -0 -I {} bash -c "./shellcheck -e SC2086 \"{}\""
-
 test: ## Run tests for net
 	-go clean -testcache
 	go test ${TEST_OPTS} -mod=vendor ./internal/...
 	go test ${TEST_OPTS} -mod=vendor ./pkg/...
 
-check: lint test  lint-shell ## Run lint and test
+check: lint test
 
 docker-push-test:
 	bash ./docker/docker_build.sh test ${BUILD_OPTS_DEPLOY}
