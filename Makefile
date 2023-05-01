@@ -1,9 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY : check lint lint-extra install-linters dep test
 .PHONY : build  clean install  format  build-race deploy
-.PHONY : integration-build
-.PHONY : integration-run-generic
-.PHONY : e2e-build e2e-run e2e-test e2e-stop e2e-clean
 
 SHELL := /usr/bin/env bash
 
@@ -47,7 +44,6 @@ export REGISTRY=${DOCKER_REGISTRY}
 dep: ## Sorts dependencies
 #	GO111MODULE=on GOPRIVATE=github.com/skycoin/* go get -v github.com/skycoin/skywire@master
 	GO111MODULE=on GOPRIVATE=github.com/skycoin/* go mod vendor -v
-	yarn --cwd ./pkg/node-visualizer/web install
 
 format: dep ## Formats the code. Must have goimports and goimports-reviser installed (use make install-linters).
 	goimports -w -local github.com/skycoin/skywire-ut ./pkg
@@ -99,46 +95,12 @@ lint-extra: ## Run linters with extra checks.
 	golangci-lint run --no-config --enable-all ./...
 	go vet -all -mod=vendor ./...
 
-lint-shell:
-	find ./ci_scripts -type f -iname '*.sh' -print0 | xargs -0 -I {} bash -c "./shellcheck \"{}\""
-	find ./docker -type f -iname '*.sh' -print0 | xargs -0 -I {} bash -c "./shellcheck -e SC2086 \"{}\""
-
 test: ## Run tests for net
 	-go clean -testcache
 	go test ${TEST_OPTS} -mod=vendor ./internal/...
 	go test ${TEST_OPTS} -mod=vendor ./pkg/...
 
-check: lint test  lint-shell ## Run lint and test
-
-## : ## _ [E2E tests suite]
-
-e2e-build: set-forwarding ## E2E. Build dockers and containers for e2e-tests
-	./docker/docker_build.sh e2e ${BUILD_OPTS_DEPLOY}
-
-e2e-run: ## E2E. Start e2e environment
-	bash -c "DOCKER_TAG=e2e docker-compose up -d"
-	bash -c "DOCKER_TAG=e2e docker-compose ps"
-
-e2e-logs:
-	bash -c "docker-compose logs --tail=all --follow"
-
-e2e-test: set-forwarding ## E2E. Run e2e-tests suite. Prepare e2e environment with `make e2e-build && make e2e-run`
-	-go clean -testcache
-	go test  -v -timeout=15m ./internal/integration
-
-e2e-stop: reset-forwarding ## E2E. Stop e2e environment without destroying it. Restart with `make e2e-run`
-	bash -c "DOCKER_TAG=e2e docker-compose -f ${COMPOSE_FILE} stop"
-	bash -c "DOCKER_TAG=e2e docker-compose -f ${COMPOSE_FILE} ps"
-
-e2e-clean: ## E2E. Stop e2e environment and clean everything. Restart only with `make e2e-build && make e2e-run`
-	bash -c "DOCKER_TAG=e2e docker-compose -f ${COMPOSE_FILE} down"
-	bash ./docker/docker_clean.sh e2e
-
-e2e-help: ## E2E. Show env-vars and useful commands
-	@echo -e "\nNow you can use docker-compose:\n"
-	@echo -e "   docker-compose ps/top/logs"
-	@echo -e "   docker-compose up/down/start/stop"
-	@echo -e "\nConsult with:\n\n   docker-compose help\n"
+check: lint test
 
 docker-push-test:
 	bash ./docker/docker_build.sh test ${BUILD_OPTS_DEPLOY}
@@ -147,44 +109,6 @@ docker-push-test:
 docker-push:
 	bash ./docker/docker_build.sh prod ${BUILD_OPTS_DEPLOY}
 	bash ./docker/docker_push.sh prod
-
-set-forwarding:
-	# following 2 lines are needed for SD to function. these can't be run from within the container and need to be run on the host machine
-	if [ $(shell uname -s) == "Linux" ]; then \
-		sudo bash -c 'echo 1 > /proc/sys/net/ipv4/ip_forward' && \
-		sudo bash -c 'echo 1 > /proc/sys/net/ipv6/conf/all/forwarding'; \
-	fi
-
-reset-forwarding:
-	# revert the changes
-	if [ $(shell uname -s) == "Linux" ]; then \
-		sudo bash -c 'echo 0 > /proc/sys/net/ipv4/ip_forward' && \
-		sudo bash -c 'echo 0 > /proc/sys/net/ipv6/conf/all/forwarding'; \
-	fi
-## : ## _ [Interactive integration tests]
-
-integration-env-build: set-forwarding #build
-	./docker/docker_build.sh integration ${BUILD_OPTS_DEPLOY}
-	bash -c "DOCKER_TAG=integration docker-compose up -d"
-
-integration-env-start: set-forwarding #start
-	bash -c "DOCKER_TAG=integration docker-compose up -d"
-
-integration-env-stop: reset-forwarding #stop
-	bash -c "DOCKER_TAG=integration docker-compose -f ${COMPOSE_FILE} stop"
-
-integration-env-clean: #clean
-	bash -c "DOCKER_TAG=integration docker-compose -f ${COMPOSE_FILE} down"
-	bash ./docker/docker_clean.sh integration
-
-mod-comm: ## Comments the 'replace' rule in go.mod
-	./ci_scripts/go_mod_replace.sh comment go.mod
-
-mod-uncomm: ## Uncomments the 'replace' rule in go.mod
-	./ci_scripts/go_mod_replace.sh uncomment go.mod
-
-vendor-integration-check: ## Check compatibility of master@skywire-services with last vendored packages
-	./ci_scripts/vendor-integration-check.sh
 
 ## : ## _ [Other]
 

@@ -1,6 +1,0 @@
-# Disable following env file(s)
-disable=SC1091
-# disable error due to ps aux | grep use in integration teardown
-disable=SC2009
-# disable following non constant source
-disable=SC1090

@@ -6,7 +6,7 @@ tag="$1"
 registry="$REGISTRY"
 
 if [ -z "$registry" ]; then
-	registry="skycoinpro"
+	registry="skycoin"
 fi
 
 if [ -z "$tag" ]; then
@@ -14,23 +14,6 @@ if [ -z "$tag" ]; then
   exit
 fi
 
-declare -a images_arr=(
-  "transport-discovery"
-  "route-finder"
-  "setup-node"
-  "address-resolver"
-  "uptime-tracker"
-  "network-monitor"
-  "node-visualizer"
-  "config-bootstrapper"
-  "liveness-checker"
-  "vpn-monitor"
-  "public-visor-monitor"
-  "dmsg-monitor"
-)
-
 echo "Pushing to $registry using tag: $tag"
 
-for c in "${images_arr[@]}"; do
-  docker push "$registry"/"$c":"$tag"
-done
+docker push "$registry"/"uptime-tracker":"$tag"
