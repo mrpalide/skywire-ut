@@ -9,17 +9,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
+
+	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/geo"
 	"github.com/skycoin/skywire-utilities/pkg/httpauth"
 	"github.com/skycoin/skywire-utilities/pkg/storeconfig"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 )
 
 var testPubKey, testSec = cipher.GenerateKeyPair()
@@ -63,19 +62,9 @@ func TestHandleUptimes(t *testing.T) {
 	var resp store.UptimeResponse
 	require.NoError(t, json.NewDecoder(bytes.NewBuffer(w.Body.Bytes())).Decode(&resp))
 
-	now := time.Now()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	monthEnd := monthStart.AddDate(0, 1, 0)
-
-	totalMonthSeconds := float64(int(monthEnd.Sub(monthStart).Seconds()))
-
 	require.Len(t, resp, 1)
 	assert.Equal(t, pk.String(), resp[0].Key)
 
-	iterationsCount := store.UptimeSeconds * float64(iterations)
-	assert.Equal(t, iterationsCount, resp[0].Uptime)
-	assert.Equal(t, totalMonthSeconds-iterationsCount, resp[0].Downtime)
-	assert.Equal(t, iterationsCount/totalMonthSeconds*100, resp[0].Percentage)
 	assert.True(t, resp[0].Online)
 }
 

@@ -9,10 +9,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/SkycoinPro/skywire-services/internal/pg"
+	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/spf13/cobra"
+	"gorm.io/gorm"
+
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -22,13 +29,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/skycoin/skywire-utilities/pkg/storeconfig"
 	"github.com/skycoin/skywire-utilities/pkg/tcpproxy"
-	"github.com/spf13/cobra"
-	"gorm.io/gorm"
-
-	"github.com/SkycoinPro/skywire-services/internal/pg"
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 )
 
 const (
