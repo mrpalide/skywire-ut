@@ -78,7 +78,7 @@ func (s *memStore) GetAllUptimes(startYear int, startMonth time.Month, endYear i
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
 	endDate := time.Date(endYear, endMonth, 1, 0, 0, 0, 0, time.Now().Location())
 
-	var uptimes []map[string]string
+	var keys []string
 	for ; startDate.Before(endDate) || startDate.Equal(endDate); startDate = startDate.AddDate(0, 1, 0) {
 		if _, ok := s.visors[startDate.Year()]; !ok {
 			continue
@@ -90,10 +90,12 @@ func (s *memStore) GetAllUptimes(startYear int, startMonth time.Month, endYear i
 			continue
 		}
 
-		uptimes = append(uptimes, monthUptimes)
+		for pk := range monthUptimes {
+			keys = append(keys, pk)
+		}
 	}
 
-	return makeUptimeResponse(uptimes, s.lastTS, map[string]string{}, startYear, startMonth, endYear, endMonth, nil)
+	return makeUptimeResponse(keys, s.lastTS, map[string]string{}, nil)
 }
 
 func (s *memStore) GetUptimes(pubKeys []string, startYear int, startMonth time.Month, endYear int, endMonth time.Month) (UptimeResponse, error) {
@@ -103,7 +105,7 @@ func (s *memStore) GetUptimes(pubKeys []string, startYear int, startMonth time.M
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
 	endDate := time.Date(endYear, endMonth, 1, 0, 0, 0, 0, time.Now().Location())
 
-	var uptimes []map[string]string
+	var keys []string
 	for ; startDate.Before(endDate) || startDate.Equal(endDate); startDate = startDate.AddDate(0, 1, 0) {
 		if _, ok := s.visors[startDate.Year()]; !ok {
 			continue
@@ -114,17 +116,15 @@ func (s *memStore) GetUptimes(pubKeys []string, startYear int, startMonth time.M
 			continue
 		}
 
-		monthUptimes := make(map[string]string, len(pubKeys))
 		for _, pk := range pubKeys {
-			uptime, ok := s.visors[startDate.Year()][startDate.Month()][pk]
+			_, ok := s.visors[startDate.Year()][startDate.Month()][pk]
 			if !ok {
 				continue
 			}
 
-			monthUptimes[pk] = uptime
+			keys = append(keys, pk)
 		}
 
-		uptimes = append(uptimes, monthUptimes)
 	}
 
 	lastTSMap := make(map[string]string)
@@ -138,7 +138,7 @@ func (s *memStore) GetUptimes(pubKeys []string, startYear int, startMonth time.M
 		lastTSMap[pk] = ts
 	}
 
-	return makeUptimeResponse(uptimes, lastTSMap, map[string]string{}, startYear, startMonth, endYear, endMonth, nil)
+	return makeUptimeResponse(keys, lastTSMap, map[string]string{}, nil)
 }
 
 func (s *memStore) GetAllVisors(locDetails geo.LocationDetails) (VisorsResponse, error) {
@@ -151,19 +151,11 @@ func (s *memStore) GetAllVisors(locDetails geo.LocationDetails) (VisorsResponse,
 	startYear, startMonth := now.Year(), now.Month()
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
 
-	currentMonthKeys, ok := s.visors[startDate.Year()][startDate.Month()]
-	if !ok {
-		return VisorsResponse{}, fmt.Errorf("error getting current Month Keys")
-	}
 	for pk, ip := range s.ips[fmt.Sprintf("%d:%d", startDate.Year(), startDate.Month())] {
 		ips[pk] = ip
-
-		if ts, ok := s.lastTS[pk]; ok {
-			currentMonthKeys[pk] = ts
-		}
 	}
 
-	return makeVisorsResponse(currentMonthKeys, ips, locDetails)
+	return makeVisorsResponse(ips, locDetails)
 }
 
 func (s *memStore) GetVisorsIPs(month string) (map[string]visorIPsResponse, error) {

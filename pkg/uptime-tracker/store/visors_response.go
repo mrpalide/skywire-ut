@@ -19,14 +19,9 @@ type VisorDef struct {
 	Lon float64 `json:"lon"`
 }
 
-func makeVisorsResponse(currentMonthKeys, ips map[string]string, locDetails geo.LocationDetails) (VisorsResponse, error) {
+func makeVisorsResponse(ips map[string]string, locDetails geo.LocationDetails) (VisorsResponse, error) {
 	response := VisorsResponse{}
-	for pk := range currentMonthKeys {
-		ip, ok := ips[pk]
-		if !ok {
-			continue
-		}
-
+	for pk, ip := range ips {
 		geo, err := locDetails(net.ParseIP(ip))
 		if err != nil {
 			log.WithError(err).
