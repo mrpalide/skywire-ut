@@ -53,7 +53,7 @@ var (
 	testing           bool
 	dmsgDisc          string
 	sk                cipher.SecKey
-	storeData         int
+	cutoffStoreData   int
 )
 
 func init() {
@@ -64,7 +64,7 @@ func init() {
 	rootCmd.Flags().IntVar(&redisPoolSize, "redis-pool-size", 10, "redis connection pool size")
 	rootCmd.Flags().StringVar(&pgHost, "pg-host", "localhost", "host of postgres")
 	rootCmd.Flags().StringVar(&pgPort, "pg-port", "5432", "port of postgres")
-	rootCmd.Flags().IntVar(&storeData, "cutoff-store-data", 7, "number of days data store in db")
+	rootCmd.Flags().IntVar(&cutoffStoreData, "cutoff-store-data", 7, "number of days data store in db")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "uptime_tracker", "logging tag")
@@ -153,7 +153,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		enableMetrics := metricsAddr != ""
-		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m, storeData)
+		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m, cutoffStoreData)
 
 		utPAPI := api.NewPrivate(logger, s)
 
