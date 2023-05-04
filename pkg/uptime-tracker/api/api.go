@@ -197,7 +197,7 @@ func (api *API) dailyRoutine(logger logrus.FieldLogger) {
 	}
 	// save to file
 	file, _ := json.MarshalIndent(data, "", " ") //nolint
-	fileName := fmt.Sprintf("%s-uptime-data.json", time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
+	fileName := fmt.Sprintf("/daily-data/%s-uptime-data.json", time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
 	err = os.WriteFile(fileName, file, 0644) //nolint
 	if err != nil {
 		logger.WithError(err).Warn("unable to save data to json file")

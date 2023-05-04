@@ -64,7 +64,7 @@ func init() {
 	rootCmd.Flags().IntVar(&redisPoolSize, "redis-pool-size", 10, "redis connection pool size")
 	rootCmd.Flags().StringVar(&pgHost, "pg-host", "localhost", "host of postgres")
 	rootCmd.Flags().StringVar(&pgPort, "pg-port", "5432", "port of postgres")
-	rootCmd.Flags().IntVar(&storeData, "store-data", 14, "number of days data store in db")
+	rootCmd.Flags().IntVar(&storeData, "cutoff-store-data", 7, "number of days data store in db")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "uptime_tracker", "logging tag")
