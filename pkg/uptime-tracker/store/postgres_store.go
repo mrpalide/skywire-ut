@@ -166,7 +166,7 @@ func (s *postgresStore) GetAllVisors(locDetails geo.LocationDetails) (VisorsResp
 func (s *postgresStore) GetDailyUpdateHistory() (map[string]map[string]string, error) {
 	var uptimesRecords []DailyUptimeHistory
 	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -40)
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -7)
 	if err := s.client.Where("created_at >= ?", startDate).Find(&uptimesRecords).Error; err != nil {
 		return map[string]map[string]string{}, err
 	}
@@ -281,6 +281,19 @@ func (s *postgresStore) GetNumberOfUptimesByYearAndMonth(year int, month time.Mo
 	timeValue := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Now().Location())
 	err := s.client.Model(&DailyUptimeHistory{}).Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 1, 0).Add(-1*time.Second)).Group("pub_key").Count(&counter).Error
 	return int(counter), err
+}
+
+func (s *postgresStore) DeleteOldEntries(cutoff int) error {
+	deleteDate := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -cutoff)
+	err := s.client.Where("created_at < ?", deleteDate).Delete(&DailyUptimeHistory{}).Error
+	return err
+}
+
+func (s *postgresStore) GetLastDayData() ([]DailyUptimeHistory, error) {
+	var data []DailyUptimeHistory
+	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+	err := s.client.Where("created_at BETWEEN ? AND ?", today.AddDate(0, 0, -1), today.Add(-1*time.Second)).Find(&data).Error
+	return data, err
 }
 
 // DailyUptimeHistory is gorm.Model for daily uptime history table

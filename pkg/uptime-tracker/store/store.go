@@ -24,6 +24,8 @@ type Store interface {
 	GetNumberOfUptimesByYearAndMonth(year int, month time.Month) (int, error)
 	UpdateUptime(pk, ip, version string) error
 	GetDailyUpdateHistory() (map[string]map[string]string, error)
+	DeleteOldEntries(cutoff int) error
+	GetLastDayData() ([]DailyUptimeHistory, error)
 	Close()
 }
 

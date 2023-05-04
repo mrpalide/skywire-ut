@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,6 +56,7 @@ type API struct {
 	visorsCacheMu          sync.RWMutex
 	dailyUptimeCache       map[string]map[string]string
 	dailyUptimeCacheMu     sync.RWMutex
+	cutoffStoreUptimes     int
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -73,7 +75,7 @@ type HealthCheckResponse struct {
 
 // New constructs a new API instance.
 func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, locDetails geo.LocationDetails,
-	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics) *API {
+	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, cutoffStoreData int) *API {
 	if log == nil {
 		log = logging.MustGetLogger("uptime_tracker")
 	}
@@ -84,6 +86,7 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		store:                       s,
 		locDetails:                  locDetails,
 		startedAt:                   time.Now(),
+		cutoffStoreUptimes:          cutoffStoreData,
 	}
 
 	r := chi.NewRouter()
@@ -141,6 +144,7 @@ func (api *API) log(r *http.Request) logrus.FieldLogger {
 
 // RunBackgroundTasks is function which runs periodic background tasks of API.
 func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogger) {
+	date := time.Now().Format("YYYY-MM-DD")
 	cacheTicker := time.NewTicker(time.Minute * 5)
 	defer cacheTicker.Stop()
 	ticker := time.NewTicker(time.Second * 10)
@@ -153,6 +157,10 @@ func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogge
 			return
 		case <-cacheTicker.C:
 			api.updateInternalCaches(logger)
+			if time.Now().Format("YYYY-MM-DD") > date {
+				api.dailyRoutine(logger)
+				date = time.Now().Format("YYYY-MM-DD")
+			}
 		case <-ticker.C:
 			api.updateInternalState(ctx, logger)
 		}
@@ -171,6 +179,28 @@ func (api *API) updateInternalCaches(logger logrus.FieldLogger) {
 	err = api.updateDailyUptimesCache()
 	if err != nil {
 		logger.WithError(err).Errorf("failed to update daily uptimes cache")
+	}
+}
+
+func (api *API) dailyRoutine(logger logrus.FieldLogger) {
+	// api.cutoffStoreUptimes
+	// delete old data
+	err := api.store.DeleteOldEntries(api.cutoffStoreUptimes)
+	if err != nil {
+		logger.WithError(err).Warn("unable to delete old entries from db")
+	}
+	// save yesterday data as YYYY-MM-DD-uptime-data.json file
+	data, err := api.store.GetLastDayData()
+	if err != nil {
+		logger.WithError(err).Warn("unable to fetch last day data from db")
+		return
+	}
+	// save to file
+	file, _ := json.MarshalIndent(data, "", " ") //nolint
+	fileName := fmt.Sprintf("%s-uptime-data.json", time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
+	err = os.WriteFile(fileName, file, 0644) //nolint
+	if err != nil {
+		logger.WithError(err).Warn("unable to save data to json file")
 	}
 }
 

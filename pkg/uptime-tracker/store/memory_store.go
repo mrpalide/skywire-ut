@@ -240,3 +240,11 @@ func (s *memStore) Close() {
 func (s *memStore) GetDailyUpdateHistory() (map[string]map[string]string, error) {
 	return map[string]map[string]string{}, nil
 }
+
+func (s *memStore) DeleteOldEntries(cutoff int) error {
+	return nil
+}
+
+func (s *memStore) GetLastDayData() ([]DailyUptimeHistory, error) {
+	return []DailyUptimeHistory{}, nil
+}
