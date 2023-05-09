@@ -145,7 +145,7 @@ func (api *API) log(r *http.Request) logrus.FieldLogger {
 
 // RunBackgroundTasks is function which runs periodic background tasks of API.
 func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogger) {
-	date := time.Now().Format("YYYY-MM-DD")
+	date := time.Now().Format("2006-01-02")
 	cacheTicker := time.NewTicker(time.Minute * 5)
 	defer cacheTicker.Stop()
 	ticker := time.NewTicker(time.Second * 10)
@@ -158,9 +158,9 @@ func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogge
 			return
 		case <-cacheTicker.C:
 			api.updateInternalCaches(logger)
-			if time.Now().Format("YYYY-MM-DD") > date {
+			if time.Now().Format("2006-01-02") > date {
 				api.dailyRoutine(logger)
-				date = time.Now().Format("YYYY-MM-DD")
+				date = time.Now().Format("2006-01-02")
 			}
 		case <-ticker.C:
 			api.updateInternalState(ctx, logger)
@@ -184,7 +184,6 @@ func (api *API) updateInternalCaches(logger logrus.FieldLogger) {
 }
 
 func (api *API) dailyRoutine(logger logrus.FieldLogger) {
-	// api.cutoffStoreUptimes
 	// delete old data
 	err := api.store.DeleteOldEntries(api.storeUptimesCutoff)
 	if err != nil {
@@ -196,9 +195,11 @@ func (api *API) dailyRoutine(logger logrus.FieldLogger) {
 		logger.WithError(err).Warn("unable to fetch last day data from db")
 		return
 	}
+	// check path, make its if not available
+	os.MkdirAll(api.storeUptimesPath, os.ModePerm) //nolint
 	// save to file
 	file, _ := json.MarshalIndent(data, "", " ") //nolint
-	fileName := fmt.Sprintf("%s/%s-uptime-data.json", api.storeUptimesPath, time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
+	fileName := fmt.Sprintf("%s/%s-uptime-data.json", api.storeUptimesPath, time.Now().AddDate(0, 0, -1).Format("2006-01-02"))
 	err = os.WriteFile(fileName, file, 0644) //nolint
 	if err != nil {
 		logger.WithError(err).Warn("unable to save data to json file")
