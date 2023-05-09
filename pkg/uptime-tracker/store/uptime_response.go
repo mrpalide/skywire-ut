@@ -14,12 +14,9 @@ type UptimeResponse []UptimeDef
 
 // UptimeDef is the item of `UptimeResponse`.
 type UptimeDef struct {
-	Key        string  `json:"key"`
-	Uptime     float64 `json:"uptime"`
-	Downtime   float64 `json:"downtime"`
-	Percentage float64 `json:"percentage"`
-	Online     bool    `json:"online"`
-	Version    string  `json:"-"`
+	Key     string `json:"key"`
+	Online  bool   `json:"online"`
+	Version string `json:"-"`
 }
 
 // UptimeResponseV2 is the tracker API response format v2 for `/uptimes`.
@@ -28,9 +25,6 @@ type UptimeResponseV2 []UptimeDefV2
 // UptimeDefV2 is the item of `UptimeResponseV2`.
 type UptimeDefV2 struct {
 	Key                string            `json:"pk"`
-	Uptime             float64           `json:"up"`
-	Downtime           float64           `json:"down"`
-	Percentage         float64           `json:"pct"`
 	Online             bool              `json:"on"`
 	Version            string            `json:"version,omitempty"`
 	DailyOnlineHistory map[string]string `json:"daily,omitempty"`

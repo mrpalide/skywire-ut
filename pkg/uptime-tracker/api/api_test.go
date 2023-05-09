@@ -41,7 +41,7 @@ func TestHandleUptimes(t *testing.T) {
 	nonceMock, err := httpauth.NewNonceStore(ctx, storeconfig.Config{Type: storeconfig.Memory}, "")
 	require.NoError(t, err)
 	api := New(nil, mock, nonceMock, geoFunc, false, false,
-		utmetrics.NewEmpty(), 0)
+		utmetrics.NewEmpty(), 0, "")
 
 	pk, _ := cipher.GenerateKeyPair()
 
@@ -75,7 +75,7 @@ func TestAPI_handleUpdate(t *testing.T) {
 	nonceMock, err := httpauth.NewNonceStore(ctx, storeconfig.Config{Type: storeconfig.Memory}, "")
 	require.NoError(t, err)
 	api := New(nil, mock, nonceMock, geoFunc, false, false,
-		utmetrics.NewEmpty(), 0)
+		utmetrics.NewEmpty(), 0, "")
 
 	t.Run("StatusOK", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -106,7 +106,7 @@ func TestApi_UpdateRemovedMethod(t *testing.T) {
 	nonceMock, err := httpauth.NewNonceStore(ctx, storeconfig.Config{Type: storeconfig.Memory}, "")
 	require.NoError(t, err)
 	api := New(nil, mock, nonceMock, geoFunc, false, false,
-		utmetrics.NewEmpty(), 0)
+		utmetrics.NewEmpty(), 0, "")
 
 	t.Run("StatusGone", func(t *testing.T) {
 		w := httptest.NewRecorder()

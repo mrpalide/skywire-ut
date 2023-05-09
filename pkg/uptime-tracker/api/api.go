@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -56,7 +55,8 @@ type API struct {
 	visorsCacheMu          sync.RWMutex
 	dailyUptimeCache       map[string]map[string]string
 	dailyUptimeCacheMu     sync.RWMutex
-	cutoffStoreUptimes     int
+	storeUptimesCutoff     int
+	storeUptimesPath       string
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -75,7 +75,7 @@ type HealthCheckResponse struct {
 
 // New constructs a new API instance.
 func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, locDetails geo.LocationDetails,
-	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, cutoffStoreData int) *API {
+	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, storeDataCutoff int, storeDataPath string) *API {
 	if log == nil {
 		log = logging.MustGetLogger("uptime_tracker")
 	}
@@ -86,7 +86,8 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		store:                       s,
 		locDetails:                  locDetails,
 		startedAt:                   time.Now(),
-		cutoffStoreUptimes:          cutoffStoreData,
+		storeUptimesCutoff:          storeDataCutoff,
+		storeUptimesPath:            storeDataPath,
 	}
 
 	r := chi.NewRouter()
@@ -185,7 +186,7 @@ func (api *API) updateInternalCaches(logger logrus.FieldLogger) {
 func (api *API) dailyRoutine(logger logrus.FieldLogger) {
 	// api.cutoffStoreUptimes
 	// delete old data
-	err := api.store.DeleteOldEntries(api.cutoffStoreUptimes)
+	err := api.store.DeleteOldEntries(api.storeUptimesCutoff)
 	if err != nil {
 		logger.WithError(err).Warn("unable to delete old entries from db")
 	}
@@ -197,7 +198,7 @@ func (api *API) dailyRoutine(logger logrus.FieldLogger) {
 	}
 	// save to file
 	file, _ := json.MarshalIndent(data, "", " ") //nolint
-	fileName := fmt.Sprintf("/daily-data/%s-uptime-data.json", time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
+	fileName := fmt.Sprintf("%s/%s-uptime-data.json", api.storeUptimesPath, time.Now().AddDate(0, 0, -1).Format("YYYY-MM-DD"))
 	err = os.WriteFile(fileName, file, 0644) //nolint
 	if err != nil {
 		logger.WithError(err).Warn("unable to save data to json file")
@@ -439,11 +440,8 @@ func (api *API) handleUptimes(w http.ResponseWriter, r *http.Request) {
 		var uptimesV2 store.UptimeResponseV2
 		for _, uptime := range uptimes {
 			var uptimev2 store.UptimeDefV2
-			uptimev2.Downtime = uptime.Downtime
 			uptimev2.Key = uptime.Key
-			uptimev2.Uptime = uptime.Uptime
 			uptimev2.Online = uptime.Online
-			uptimev2.Percentage = math.Round(uptime.Percentage*100) / 100
 			uptimev2.DailyOnlineHistory = dailyUptimeHistory[uptime.Key]
 			uptimev2.Version = uptime.Version
 			uptimesV2 = append(uptimesV2, uptimev2)
