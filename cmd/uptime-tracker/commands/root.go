@@ -45,6 +45,7 @@ var (
 	redisPoolSize     int
 	pgHost            string
 	pgPort            string
+	pgMaxOpenConn     int
 	logEnabled        bool
 	syslogAddr        string
 	tag               string
@@ -65,6 +66,7 @@ func init() {
 	rootCmd.Flags().IntVar(&redisPoolSize, "redis-pool-size", 10, "redis connection pool size")
 	rootCmd.Flags().StringVar(&pgHost, "pg-host", "localhost", "host of postgres")
 	rootCmd.Flags().StringVar(&pgPort, "pg-port", "5432", "port of postgres")
+	rootCmd.Flags().IntVar(&pgMaxOpenConn, "pg-max-open-conn", 60, "maximum open connection of db")
 	rootCmd.Flags().IntVar(&storeDataCutoff, "store-data-cutoff", 7, "number of days data store in db")
 	rootCmd.Flags().StringVar(&storeDataPath, "store-data-path", "/var/lib/skywire-ut/daily-data", "path of db daily data store")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
@@ -120,7 +122,7 @@ var rootCmd = &cobra.Command{
 				pgPassword,
 				pgDatabase)
 
-			gormDB, err = pg.Init(dsn)
+			gormDB, err = pg.Init(dsn, pgMaxOpenConn)
 			if err != nil {
 				logger.Fatalf("Failed to connect to database %v", err)
 			}
