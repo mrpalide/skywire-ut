@@ -145,7 +145,6 @@ func (api *API) log(r *http.Request) logrus.FieldLogger {
 
 // RunBackgroundTasks is function which runs periodic background tasks of API.
 func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogger) {
-	date := time.Now().Format("2006-01-02")
 	cacheTicker := time.NewTicker(time.Minute * 5)
 	defer cacheTicker.Stop()
 	ticker := time.NewTicker(time.Second * 10)
@@ -158,10 +157,7 @@ func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogge
 			return
 		case <-cacheTicker.C:
 			api.updateInternalCaches(logger)
-			if time.Now().Format("2006-01-02") > date {
-				api.dailyRoutine(logger)
-				date = time.Now().Format("2006-01-02")
-			}
+			api.dailyRoutine(logger)
 		case <-ticker.C:
 			api.updateInternalState(ctx, logger)
 		}
@@ -184,26 +180,44 @@ func (api *API) updateInternalCaches(logger logrus.FieldLogger) {
 }
 
 func (api *API) dailyRoutine(logger logrus.FieldLogger) {
-	// delete old data
-	err := api.store.DeleteOldEntries(api.storeUptimesCutoff)
+	oldestEntry, err := api.store.GetOldestEntry()
 	if err != nil {
-		logger.WithError(err).Warn("unable to delete old entries from db")
-	}
-	// save yesterday data as YYYY-MM-DD-uptime-data.json file
-	data, err := api.store.GetLastDayData()
-	if err != nil {
-		logger.WithError(err).Warn("unable to fetch last day data from db")
+		logger.WithError(err).Warn("unable to fetch oldest entry from db")
 		return
 	}
+
+	from := oldestEntry.CreatedAt
+	to := time.Now().AddDate(0, 0, -(api.storeUptimesCutoff))
+
+	for to.After(from) {
+		timeValue := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.Now().Location())
+		data, err := api.store.GetSpecificDayData(timeValue)
+		if err != nil {
+			logger.WithField("date", timeValue.Format("2006-01-02")).WithError(err).Warn("unable to fetch data specific date from db")
+			return
+		}
+		err = api.storeDailyData(data)
+		if err != nil {
+			if err != nil {
+				logger.WithError(err).Warn("unable to save data to json file")
+				return
+			}
+		}
+		err = api.store.DeleteEntries(data)
+		if err != nil {
+			logger.WithError(err).Warn("unable to delete old entries from db")
+		}
+		from.AddDate(0, 0, 1)
+	}
+}
+
+func (api *API) storeDailyData(data []store.DailyUptimeHistory) error {
 	// check path, make its if not available
 	os.MkdirAll(api.storeUptimesPath, os.ModePerm) //nolint
 	// save to file
 	file, _ := json.MarshalIndent(data, "", " ") //nolint
 	fileName := fmt.Sprintf("%s/%s-uptime-data.json", api.storeUptimesPath, time.Now().AddDate(0, 0, -1).Format("2006-01-02"))
-	err = os.WriteFile(fileName, file, 0644) //nolint
-	if err != nil {
-		logger.WithError(err).Warn("unable to save data to json file")
-	}
+	return os.WriteFile(fileName, file, 0644) //nolint
 }
 
 func (api *API) updateVisorsCache() error {

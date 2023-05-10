@@ -283,16 +283,20 @@ func (s *postgresStore) GetNumberOfUptimesByYearAndMonth(year int, month time.Mo
 	return int(counter), err
 }
 
-func (s *postgresStore) DeleteOldEntries(cutoff int) error {
-	deleteDate := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -cutoff)
-	err := s.client.Where("created_at < ?", deleteDate).Delete(&DailyUptimeHistory{}).Error
+func (s *postgresStore) DeleteEntries(data []DailyUptimeHistory) error {
+	err := s.client.Delete(&data).Error
 	return err
 }
 
-func (s *postgresStore) GetLastDayData() ([]DailyUptimeHistory, error) {
+func (s *postgresStore) GetOldestEntry() (DailyUptimeHistory, error) {
+	var data DailyUptimeHistory
+	err := s.client.Limit(1).Order("created_at asc").Find(&data).Error
+	return data, err
+}
+
+func (s *postgresStore) GetSpecificDayData(timeValue time.Time) ([]DailyUptimeHistory, error) {
 	var data []DailyUptimeHistory
-	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-	err := s.client.Where("created_at BETWEEN ? AND ?", today.AddDate(0, 0, -1), today.Add(-1*time.Second)).Find(&data).Error
+	err := s.client.Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 0, 1).Add(-1*time.Second)).Find(&data).Error
 	return data, err
 }
 

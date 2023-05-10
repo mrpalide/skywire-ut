@@ -241,10 +241,14 @@ func (s *memStore) GetDailyUpdateHistory() (map[string]map[string]string, error)
 	return map[string]map[string]string{}, nil
 }
 
-func (s *memStore) DeleteOldEntries(cutoff int) error {
+func (s *memStore) DeleteEntries([]DailyUptimeHistory) error {
 	return nil
 }
 
-func (s *memStore) GetLastDayData() ([]DailyUptimeHistory, error) {
+func (s *memStore) GetOldestEntry() (DailyUptimeHistory, error) {
+	return DailyUptimeHistory{}, nil
+}
+
+func (s *memStore) GetSpecificDayData(time time.Time) ([]DailyUptimeHistory, error) {
 	return []DailyUptimeHistory{}, nil
 }
