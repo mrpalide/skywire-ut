@@ -284,8 +284,11 @@ func (s *postgresStore) GetNumberOfUptimesByYearAndMonth(year int, month time.Mo
 }
 
 func (s *postgresStore) DeleteEntries(data []DailyUptimeHistory) error {
-	err := s.client.Delete(&data).Error
-	return err
+	for _, entry := range data {
+		err := s.client.Delete(&DailyUptimeHistory{}, "id = ?", entry.ID).Error
+		return err
+	}
+	return nil
 }
 
 func (s *postgresStore) GetOldestEntry() (DailyUptimeHistory, error) {
