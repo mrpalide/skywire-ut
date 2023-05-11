@@ -145,7 +145,6 @@ func (api *API) log(r *http.Request) logrus.FieldLogger {
 
 // RunBackgroundTasks is function which runs periodic background tasks of API.
 func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogger) {
-
 	api.dailyRoutine(logger)
 	cacheTicker := time.NewTicker(time.Minute * 5)
 	defer cacheTicker.Stop()
