@@ -9,10 +9,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/SkycoinPro/skywire-services/internal/pg"
+	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/spf13/cobra"
+	"gorm.io/gorm"
+
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/cmdutil"
@@ -22,13 +29,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/skycoin/skywire-utilities/pkg/storeconfig"
 	"github.com/skycoin/skywire-utilities/pkg/tcpproxy"
-	"github.com/spf13/cobra"
-	"gorm.io/gorm"
-
-	"github.com/SkycoinPro/skywire-services/internal/pg"
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 )
 
 const (
@@ -45,6 +45,7 @@ var (
 	redisPoolSize     int
 	pgHost            string
 	pgPort            string
+	pgMaxOpenConn     int
 	logEnabled        bool
 	syslogAddr        string
 	tag               string
@@ -53,6 +54,8 @@ var (
 	testing           bool
 	dmsgDisc          string
 	sk                cipher.SecKey
+	storeDataCutoff   int
+	storeDataPath     string
 )
 
 func init() {
@@ -63,6 +66,9 @@ func init() {
 	rootCmd.Flags().IntVar(&redisPoolSize, "redis-pool-size", 10, "redis connection pool size")
 	rootCmd.Flags().StringVar(&pgHost, "pg-host", "localhost", "host of postgres")
 	rootCmd.Flags().StringVar(&pgPort, "pg-port", "5432", "port of postgres")
+	rootCmd.Flags().IntVar(&pgMaxOpenConn, "pg-max-open-conn", 60, "maximum open connection of db")
+	rootCmd.Flags().IntVar(&storeDataCutoff, "store-data-cutoff", 7, "number of days data store in db")
+	rootCmd.Flags().StringVar(&storeDataPath, "store-data-path", "/var/lib/skywire-ut/daily-data", "path of db daily data store")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
 	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "uptime_tracker", "logging tag")
@@ -116,7 +122,7 @@ var rootCmd = &cobra.Command{
 				pgPassword,
 				pgDatabase)
 
-			gormDB, err = pg.Init(dsn)
+			gormDB, err = pg.Init(dsn, pgMaxOpenConn)
 			if err != nil {
 				logger.Fatalf("Failed to connect to database %v", err)
 			}
@@ -151,7 +157,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		enableMetrics := metricsAddr != ""
-		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m)
+		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m, storeDataCutoff, storeDataPath)
 
 		utPAPI := api.NewPrivate(logger, s)
 

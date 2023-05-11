@@ -6,21 +6,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
+	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/sirupsen/logrus"
+
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/geo"
@@ -29,9 +32,6 @@ import (
 	"github.com/skycoin/skywire-utilities/pkg/logging"
 	"github.com/skycoin/skywire-utilities/pkg/metricsutil"
 	"github.com/skycoin/skywire-utilities/pkg/netutil"
-
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 )
 
 const (
@@ -55,6 +55,8 @@ type API struct {
 	visorsCacheMu          sync.RWMutex
 	dailyUptimeCache       map[string]map[string]string
 	dailyUptimeCacheMu     sync.RWMutex
+	storeUptimesCutoff     int
+	storeUptimesPath       string
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -73,7 +75,7 @@ type HealthCheckResponse struct {
 
 // New constructs a new API instance.
 func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, locDetails geo.LocationDetails,
-	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics) *API {
+	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, storeDataCutoff int, storeDataPath string) *API {
 	if log == nil {
 		log = logging.MustGetLogger("uptime_tracker")
 	}
@@ -84,6 +86,8 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		store:                       s,
 		locDetails:                  locDetails,
 		startedAt:                   time.Now(),
+		storeUptimesCutoff:          storeDataCutoff,
+		storeUptimesPath:            storeDataPath,
 	}
 
 	r := chi.NewRouter()
@@ -141,6 +145,7 @@ func (api *API) log(r *http.Request) logrus.FieldLogger {
 
 // RunBackgroundTasks is function which runs periodic background tasks of API.
 func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogger) {
+	api.dailyRoutine(logger)
 	cacheTicker := time.NewTicker(time.Minute * 5)
 	defer cacheTicker.Stop()
 	ticker := time.NewTicker(time.Second * 10)
@@ -153,6 +158,7 @@ func (api *API) RunBackgroundTasks(ctx context.Context, logger logrus.FieldLogge
 			return
 		case <-cacheTicker.C:
 			api.updateInternalCaches(logger)
+			api.dailyRoutine(logger)
 		case <-ticker.C:
 			api.updateInternalState(ctx, logger)
 		}
@@ -172,6 +178,45 @@ func (api *API) updateInternalCaches(logger logrus.FieldLogger) {
 	if err != nil {
 		logger.WithError(err).Errorf("failed to update daily uptimes cache")
 	}
+}
+
+func (api *API) dailyRoutine(logger logrus.FieldLogger) {
+	oldestEntry, err := api.store.GetOldestEntry()
+	if err != nil {
+		logger.WithError(err).Warn("unable to fetch oldest entry from db")
+		return
+	}
+
+	from := oldestEntry.CreatedAt
+	to := time.Now().AddDate(0, 0, -(api.storeUptimesCutoff))
+
+	for to.After(from) {
+		timeValue := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.Now().Location())
+		data, err := api.store.GetSpecificDayData(timeValue)
+		if err != nil {
+			logger.WithField("date", timeValue.Format("2006-01-02")).WithError(err).Warn("unable to fetch data specific date from db")
+			return
+		}
+		err = api.storeDailyData(data, timeValue)
+		if err != nil {
+			logger.WithError(err).Warn("unable to save data to json file")
+			return
+		}
+		err = api.store.DeleteEntries(data)
+		if err != nil {
+			logger.WithError(err).Warn("unable to delete old entries from db")
+		}
+		from = from.AddDate(0, 0, 1)
+	}
+}
+
+func (api *API) storeDailyData(data []store.DailyUptimeHistory, timeValue time.Time) error {
+	// check path, make its if not available
+	os.MkdirAll(api.storeUptimesPath, os.ModePerm) //nolint
+	// save to file
+	file, _ := json.MarshalIndent(data, "", " ") //nolint
+	fileName := fmt.Sprintf("%s/%s-uptime-data.json", api.storeUptimesPath, timeValue.Format("2006-01-02"))
+	return os.WriteFile(fileName, file, 0644) //nolint
 }
 
 func (api *API) updateVisorsCache() error {
@@ -409,11 +454,8 @@ func (api *API) handleUptimes(w http.ResponseWriter, r *http.Request) {
 		var uptimesV2 store.UptimeResponseV2
 		for _, uptime := range uptimes {
 			var uptimev2 store.UptimeDefV2
-			uptimev2.Downtime = uptime.Downtime
 			uptimev2.Key = uptime.Key
-			uptimev2.Uptime = uptime.Uptime
 			uptimev2.Online = uptime.Online
-			uptimev2.Percentage = math.Round(uptime.Percentage*100) / 100
 			uptimev2.DailyOnlineHistory = dailyUptimeHistory[uptime.Key]
 			uptimev2.Version = uptime.Version
 			uptimesV2 = append(uptimesV2, uptimev2)

@@ -6,7 +6,7 @@ tag="$1"
 registry="$REGISTRY"
 
 if [ -z "$registry" ]; then
-	registry="skycoin"
+	registry="skycoinpro"
 fi
 
 if [ -z "$tag" ]; then
