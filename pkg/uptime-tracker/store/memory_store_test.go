@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
 	"github.com/skycoin/skywire-utilities/pkg/geo"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMemory(t *testing.T) {
@@ -29,17 +30,10 @@ func testUptime(t *testing.T, store Store) {
 	}
 
 	now := time.Now()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	monthEnd := monthStart.AddDate(0, 1, 0)
-
-	totalMonthSeconds := float64(int(monthEnd.Sub(monthStart).Seconds()))
 
 	wantUptime := UptimeDef{
-		Key:        pk.String(),
-		Uptime:     iterations,
-		Downtime:   totalMonthSeconds - iterations,
-		Percentage: iterations / totalMonthSeconds * 100,
-		Online:     true,
+		Key:    pk.String(),
+		Online: true,
 	}
 
 	wantVisor := VisorDef{

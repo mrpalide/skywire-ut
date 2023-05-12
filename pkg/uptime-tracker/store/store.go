@@ -3,9 +3,10 @@ package store
 import (
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/skycoin/skywire-utilities/pkg/geo"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"gorm.io/gorm"
 )
 
 const (
@@ -23,6 +24,9 @@ type Store interface {
 	GetNumberOfUptimesByYearAndMonth(year int, month time.Month) (int, error)
 	UpdateUptime(pk, ip, version string) error
 	GetDailyUpdateHistory() (map[string]map[string]string, error)
+	DeleteEntries([]DailyUptimeHistory) error
+	GetOldestEntry() (DailyUptimeHistory, error)
+	GetSpecificDayData(time time.Time) ([]DailyUptimeHistory, error)
 	Close()
 }
 

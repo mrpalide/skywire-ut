@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/skycoin/skywire-utilities/pkg/geo"
 	"github.com/skycoin/skywire-utilities/pkg/logging"
-	"gorm.io/gorm"
 )
 
 type postgresStore struct {
@@ -24,9 +25,6 @@ type postgresStore struct {
 // NewPostgresStore creates new uptimes postgres store.
 func NewPostgresStore(logger *logging.Logger, cl *gorm.DB) (Store, error) {
 	// automigrate
-	if err := cl.AutoMigrate(Uptime{}); err != nil {
-		logger.Warn("failed to complete automigrate process")
-	}
 	if err := cl.AutoMigrate(DailyUptimeHistory{}); err != nil {
 		logger.Warn("failed to complete automigrate process")
 	}
@@ -53,16 +51,6 @@ func (s *postgresStore) UpdateUptime(pk, ip, version string) error {
 		return nil
 	}
 
-	// get existing data
-	var uptimeRecord Uptime
-	startDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	err := s.client.
-		Where("created_at >=  ? AND pub_key = ?", startDate, pk).
-		First(&uptimeRecord).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
-	}
-
 	// get existing data of daily record
 	var dailyUptimeRecord DailyUptimeHistory
 	startDailyDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -73,31 +61,23 @@ func (s *postgresStore) UpdateUptime(pk, ip, version string) error {
 		return dailyErr
 	}
 
-	if uptimeRecord.PubKey == "" {
-		uptimeRecord.PubKey = pk
-	}
 	if dailyUptimeRecord.PubKey == "" {
 		dailyUptimeRecord.PubKey = pk
 	}
 
-	uptimeRecord.Online += seconds
+	dailyUptimeRecord.DailyOnline += seconds
 	if ip != "" {
 		ips := []string{}
-		if len(uptimeRecord.IPs) > 0 {
-			ips = strings.Split(uptimeRecord.IPs, ",")
+		if len(dailyUptimeRecord.IPs) > 0 {
+			ips = strings.Split(dailyUptimeRecord.IPs, ",")
 		}
 		ips = append(ips, ip)
-		uptimeRecord.IPs = uniqueIPs(ips)
-		uptimeRecord.LastIP = ip
+		dailyUptimeRecord.IPs = uniqueIPs(ips)
+		dailyUptimeRecord.LastIP = ip
 	}
-	uptimeRecord.Version = version
-	if err := s.client.Save(&uptimeRecord).Error; err != nil {
-		return fmt.Errorf("failed to create/update uptime record: %w", err)
-	}
-
-	dailyUptimeRecord.DailyOnline += seconds
+	dailyUptimeRecord.Version = version
 	if err := s.client.Save(&dailyUptimeRecord).Error; err != nil {
-		return fmt.Errorf("failed to create/update daily uptime record: %w", err)
+		return fmt.Errorf("failed to create/update uptime record: %w", err)
 	}
 
 	// update cache
@@ -112,81 +92,81 @@ func (s *postgresStore) GetAllUptimes(startYear int, startMonth time.Month, endY
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
 	endDate := time.Date(endYear, endMonth, 1, 0, 0, 0, 0, time.Now().Location())
 
-	var uptimes []map[string]string
+	var keys []string
 	lastTSs := make(map[string]string)
 	versions := make(map[string]string)
 	var murError error
-	var uptimesRecords []Uptime
+	var uptimesRecords []DailyUptimeHistory
 	for ; startDate.Before(endDate) || startDate.Equal(endDate); startDate = startDate.AddDate(0, 1, 0) {
-		monthUptimes := make(map[string]string)
-		if err := s.client.Where("created_at BETWEEN ? AND ?", startDate, startDate.AddDate(0, 1, 0).Add(-1*time.Second)).Find(&uptimesRecords).Error; err != nil {
+		if err := s.client.Where("created_at BETWEEN ? AND ?", startDate, startDate.AddDate(0, 1, 0).Add(-1*time.Second)).Order("id DESC").Find(&uptimesRecords).Error; err != nil {
 			murError = errors.New("failed on fetching data from pg store")
 			break
 		}
 		for _, record := range uptimesRecords {
-			monthUptimes[record.PubKey] = fmt.Sprint(record.Online)
-			if lastTSs[record.PubKey] <= fmt.Sprint(record.UpdatedAt.Unix()) {
-				lastTSs[record.PubKey] = fmt.Sprint(record.UpdatedAt.Unix())
+			if _, ok := lastTSs[record.PubKey]; !ok {
+				if lastTSs[record.PubKey] <= fmt.Sprint(record.UpdatedAt.Unix()) {
+					lastTSs[record.PubKey] = fmt.Sprint(record.UpdatedAt.Unix())
+				}
+				versions[record.PubKey] = record.Version
+				keys = append(keys, record.PubKey)
 			}
-			versions[record.PubKey] = record.Version
 		}
-		uptimes = append(uptimes, monthUptimes)
 	}
 
-	return makeUptimeResponse(uptimes, lastTSs, versions, startYear, startMonth, endYear, endMonth, murError)
+	return makeUptimeResponse(keys, lastTSs, versions, murError)
 }
 
 func (s *postgresStore) GetUptimes(pubKeys []string, startYear int, startMonth time.Month, endYear int, endMonth time.Month) (UptimeResponse, error) {
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
 	endDate := time.Date(endYear, endMonth, 1, 0, 0, 0, 0, time.Now().Location())
 
-	var uptimes []map[string]string
+	var keys []string
 	versions := make(map[string]string)
-	var uptimesRecords []Uptime
+	var uptimesRecords []DailyUptimeHistory
 	var murError error
 	lastTSs := make(map[string]string)
 	for ; startDate.Before(endDate) || startDate.Equal(endDate); startDate = startDate.AddDate(0, 1, 0) {
-		monthUptimes := make(map[string]string)
-		if err := s.client.Where("created_at BETWEEN ? AND ? AND pub_key = ?", startDate, startDate.AddDate(0, 1, 0).Add(-1*time.Second), pubKeys).Find(&uptimesRecords).Error; err != nil {
+		if err := s.client.Where("created_at BETWEEN ? AND ? AND pub_key = ?", startDate, startDate.AddDate(0, 1, 0).Add(-1*time.Second), pubKeys).Order("id DESC").Find(&uptimesRecords).Error; err != nil {
 			murError = errors.New("failed on fetching data from pg store")
 		}
 		for _, record := range uptimesRecords {
-			monthUptimes[record.PubKey] = fmt.Sprint(record.Online)
-			if lastTSs[record.PubKey] <= fmt.Sprint(record.UpdatedAt.Unix()) {
-				lastTSs[record.PubKey] = fmt.Sprint(record.UpdatedAt.Unix())
+			if _, ok := lastTSs[record.PubKey]; !ok {
+				if lastTSs[record.PubKey] <= fmt.Sprint(record.UpdatedAt.Unix()) {
+					lastTSs[record.PubKey] = fmt.Sprint(record.UpdatedAt.Unix())
+				}
+				versions[record.PubKey] = record.Version
+				keys = append(keys, record.PubKey)
 			}
-			versions[record.PubKey] = record.Version
 		}
-		uptimes = append(uptimes, monthUptimes)
 	}
 
-	return makeUptimeResponse(uptimes, lastTSs, versions, startYear, startMonth, endYear, endMonth, murError)
+	return makeUptimeResponse(keys, lastTSs, versions, murError)
 }
 
 func (s *postgresStore) GetAllVisors(locDetails geo.LocationDetails) (VisorsResponse, error) {
 	ips := make(map[string]string)
-	currentMonthData := make(map[string]string)
-	var uptimesRecords []Uptime
+	var uptimesRecords []DailyUptimeHistory
 
 	now := time.Now()
 	startYear, startMonth := now.Year(), now.Month()
 	startDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.Now().Location())
-	if err := s.client.Where("created_at >= ?", startDate).Find(&uptimesRecords).Error; err != nil {
+	if err := s.client.Where("created_at >= ?", startDate).Order("id DESC").Find(&uptimesRecords).Error; err != nil {
 		return VisorsResponse{}, err
 	}
 
 	for _, record := range uptimesRecords {
-		ips[record.PubKey] = record.LastIP
-		currentMonthData[record.PubKey] = fmt.Sprint(record.Online)
+		if _, ok := ips[record.PubKey]; !ok {
+			ips[record.PubKey] = record.LastIP
+		}
 	}
 
-	return makeVisorsResponse(currentMonthData, ips, locDetails)
+	return makeVisorsResponse(ips, locDetails)
 }
 
 func (s *postgresStore) GetDailyUpdateHistory() (map[string]map[string]string, error) {
 	var uptimesRecords []DailyUptimeHistory
 	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -40)
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Now().Location()).AddDate(0, 0, -7)
 	if err := s.client.Where("created_at >= ?", startDate).Find(&uptimesRecords).Error; err != nil {
 		return map[string]map[string]string{}, err
 	}
@@ -248,21 +228,23 @@ func (s *postgresStore) Close() {
 }
 
 func (s *postgresStore) readAllUptimeIPMembers(timeValue time.Time) (map[string]string, error) {
-	var uptimesRecords []Uptime
+	var uptimesRecords []DailyUptimeHistory
 	response := make(map[string]string)
 
 	if timeValue.IsZero() {
-		if err := s.client.Find(&uptimesRecords).Error; err != nil {
+		if err := s.client.Order("id DESC").Find(&uptimesRecords).Error; err != nil {
 			return response, err
 		}
 	} else {
-		if err := s.client.Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 1, 0).Add(-1*time.Second)).Find(&uptimesRecords).Error; err != nil {
+		if err := s.client.Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 1, 0).Add(-1*time.Second)).Order("id DESC").Find(&uptimesRecords).Error; err != nil {
 			return response, err
 		}
 	}
 
 	for _, record := range uptimesRecords {
-		response[record.PubKey] = record.LastIP
+		if _, ok := response[record.PubKey]; !ok {
+			response[record.PubKey] = record.LastIP
+		}
 	}
 
 	if len(response) == 0 {
@@ -290,35 +272,49 @@ func (s *postgresStore) setCache(pk string, ts int64) {
 func (s *postgresStore) GetNumberOfUptimesInCurrentMonth() (int, error) {
 	var counter int64
 	now := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location())
-	err := s.client.Model(&Uptime{}).Where("created_at BETWEEN ? AND ?", now, now.AddDate(0, 1, 0).Add(-1*time.Second)).Count(&counter).Error
+	err := s.client.Model(&DailyUptimeHistory{}).Where("created_at BETWEEN ? AND ?", now, now.AddDate(0, 1, 0).Add(-1*time.Second)).Group("pub_key").Count(&counter).Error
 	return int(counter), err
 }
 
 func (s *postgresStore) GetNumberOfUptimesByYearAndMonth(year int, month time.Month) (int, error) {
 	var counter int64
 	timeValue := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Now().Location())
-	err := s.client.Model(&Uptime{}).Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 1, 0).Add(-1*time.Second)).Count(&counter).Error
+	err := s.client.Model(&DailyUptimeHistory{}).Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 1, 0).Add(-1*time.Second)).Group("pub_key").Count(&counter).Error
 	return int(counter), err
 }
 
-// Uptime is gorm.Model for uptime table
-type Uptime struct {
-	ID        uint `gorm:"primarykey" json:"-"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	PubKey    string
-	Online    int
-	Version   string
-	IPs       string
-	LastIP    string
+func (s *postgresStore) DeleteEntries(data []DailyUptimeHistory) error {
+	for _, entry := range data {
+		err := s.client.Delete(&DailyUptimeHistory{}, entry.ID).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *postgresStore) GetOldestEntry() (DailyUptimeHistory, error) {
+	var data DailyUptimeHistory
+	err := s.client.Limit(1).Order("created_at asc").Find(&data).Error
+	return data, err
+}
+
+func (s *postgresStore) GetSpecificDayData(timeValue time.Time) ([]DailyUptimeHistory, error) {
+	var data []DailyUptimeHistory
+	err := s.client.Where("created_at BETWEEN ? AND ?", timeValue, timeValue.AddDate(0, 0, 1).Add(-1*time.Second)).Find(&data).Error
+	return data, err
 }
 
 // DailyUptimeHistory is gorm.Model for daily uptime history table
 type DailyUptimeHistory struct {
 	ID          uint `gorm:"primarykey" json:"-"`
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	PubKey      string
 	DailyOnline int
+	Version     string
+	IPs         string
+	LastIP      string
 }
 
 func uniqueIPs(ips []string) string {
