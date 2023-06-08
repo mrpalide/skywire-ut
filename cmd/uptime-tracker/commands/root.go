@@ -54,6 +54,7 @@ var (
 	testing           bool
 	dmsgDisc          string
 	sk                cipher.SecKey
+	dmsgPort          uint16
 	storeDataCutoff   int
 	storeDataPath     string
 )
@@ -77,6 +78,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&testing, "testing", "t", false, "enable testing to start without redis")
 	rootCmd.Flags().StringVar(&dmsgDisc, "dmsg-disc", "http://dmsgd.skywire.skycoin.com", "url of dmsg-discovery")
 	rootCmd.Flags().Var(&sk, "sk", "dmsg secret key")
+	rootCmd.Flags().Uint16Var(&dmsgPort, "dmsgPort", dmsg.DefaultDmsgHTTPPort, "dmsg port value\r")
 }
 
 var rootCmd = &cobra.Command{
@@ -156,8 +158,13 @@ var rootCmd = &cobra.Command{
 			m = utmetrics.NewVictoriaMetrics()
 		}
 
+		var dmsgAddr string
+		if !pk.Null() {
+			dmsgAddr = fmt.Sprintf("%s:%d", pk.Hex(), dmsgPort)
+		}
+
 		enableMetrics := metricsAddr != ""
-		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m, storeDataCutoff, storeDataPath)
+		utAPI := api.New(logger, s, nonceStore, locDetails, enableLoadTesting, enableMetrics, m, storeDataCutoff, storeDataPath, dmsgAddr)
 
 		utPAPI := api.NewPrivate(logger, s)
 

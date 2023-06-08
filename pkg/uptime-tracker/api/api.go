@@ -57,6 +57,8 @@ type API struct {
 	dailyUptimeCacheMu     sync.RWMutex
 	storeUptimesCutoff     int
 	storeUptimesPath       string
+
+	dmsgAddr string
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -71,11 +73,12 @@ type PrivateAPI struct {
 type HealthCheckResponse struct {
 	BuildInfo *buildinfo.Info `json:"build_info,omitempty"`
 	StartedAt time.Time       `json:"started_at,omitempty"`
+	DmsgAddr  string          `json:"dmsg_address,omitempty"`
 }
 
 // New constructs a new API instance.
 func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, locDetails geo.LocationDetails,
-	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, storeDataCutoff int, storeDataPath string) *API {
+	enableLoadTesting, enableMetrics bool, m utmetrics.Metrics, storeDataCutoff int, storeDataPath, dmsgAddr string) *API {
 	if log == nil {
 		log = logging.MustGetLogger("uptime_tracker")
 	}
@@ -88,6 +91,7 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		startedAt:                   time.Now(),
 		storeUptimesCutoff:          storeDataCutoff,
 		storeUptimesPath:            storeDataPath,
+		dmsgAddr:                    dmsgAddr,
 	}
 
 	r := chi.NewRouter()
@@ -552,6 +556,7 @@ func (api *API) health(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
 		BuildInfo: info,
 		StartedAt: api.startedAt,
+		DmsgAddr:  api.dmsgAddr,
 	})
 }
 
