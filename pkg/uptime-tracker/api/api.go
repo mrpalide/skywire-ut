@@ -347,7 +347,7 @@ func (api *API) handleVisors(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sendGone(w http.ResponseWriter, r *http.Request) {
+func sendGone(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusGone)
 }
 

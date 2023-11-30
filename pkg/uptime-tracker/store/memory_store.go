@@ -26,7 +26,7 @@ func NewMemoryStore() Store {
 	}
 }
 
-func (s *memStore) UpdateUptime(pk, ip, version string) error {
+func (s *memStore) UpdateUptime(pk, ip, _ string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -249,6 +249,6 @@ func (s *memStore) GetOldestEntry() (DailyUptimeHistory, error) {
 	return DailyUptimeHistory{}, nil
 }
 
-func (s *memStore) GetSpecificDayData(time time.Time) ([]DailyUptimeHistory, error) {
+func (s *memStore) GetSpecificDayData(_ time.Time) ([]DailyUptimeHistory, error) {
 	return []DailyUptimeHistory{}, nil
 }
