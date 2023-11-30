@@ -207,7 +207,7 @@ var rootCmd = &cobra.Command{
 			go dmsghttp.UpdateServers(ctx, dClient, dmsgDisc, dmsgDC, logger)
 
 			go func() {
-				if err := dmsghttp.ListenAndServe(ctx, pk, sk, utAPI, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, logger); err != nil {
+				if err := dmsghttp.ListenAndServe(ctx, sk, utAPI, dClient, dmsg.DefaultDmsgHTTPPort, dmsgDC, logger); err != nil {
 					logger.Errorf("dmsghttp.ListenAndServe utAPI: %v", err)
 					cancel()
 				}
