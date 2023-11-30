@@ -8,6 +8,7 @@ import (
 	"log/syslog"
 	"os"
 	"strings"
+	"time"
 
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
@@ -201,8 +202,15 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				logger.WithError(err).Fatal("failed to start direct dmsg client.")
 			}
-			utAPI.DmsgServers, _ = dmsgDC.AllEntries(ctx) //nolint
+
 			defer closeDmsgDC()
+
+			go func() {
+				for {
+					utAPI.DmsgServers = dmsgDC.ConnectedServersPK()
+					time.Sleep(time.Second)
+				}
+			}()
 
 			go dmsghttp.UpdateServers(ctx, dClient, dmsgDisc, dmsgDC, logger)
 
