@@ -1,6 +1,6 @@
-module github.com/SkycoinPro/skywire-services
+module github.com/skycoin/skywire-ut
 
-go 1.17
+go 1.21
 
 require (
 	github.com/go-chi/chi/v5 v5.0.8-0.20220103230436-7dbe9a0bd10f

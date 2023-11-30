@@ -9,14 +9,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SkycoinPro/skywire-services/internal/pg"
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/skycoin/skywire-ut/internal/pg"
+	"github.com/skycoin/skywire-ut/internal/utmetrics"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/api"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/store"
 	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 
