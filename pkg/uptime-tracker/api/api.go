@@ -58,7 +58,8 @@ type API struct {
 	storeUptimesCutoff     int
 	storeUptimesPath       string
 
-	dmsgAddr string
+	dmsgAddr    string
+	DmsgServers []string
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -71,9 +72,10 @@ type PrivateAPI struct {
 
 // HealthCheckResponse is struct of /health endpoint
 type HealthCheckResponse struct {
-	BuildInfo *buildinfo.Info `json:"build_info,omitempty"`
-	StartedAt time.Time       `json:"started_at,omitempty"`
-	DmsgAddr  string          `json:"dmsg_address,omitempty"`
+	BuildInfo   *buildinfo.Info `json:"build_info,omitempty"`
+	StartedAt   time.Time       `json:"started_at,omitempty"`
+	DmsgAddr    string          `json:"dmsg_address,omitempty"`
+	DmsgServers []string        `json:"dmsg_servers,omitempty"`
 }
 
 // New constructs a new API instance.
@@ -92,6 +94,7 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		storeUptimesCutoff:          storeDataCutoff,
 		storeUptimesPath:            storeDataPath,
 		dmsgAddr:                    dmsgAddr,
+		DmsgServers:                 []string{},
 	}
 
 	r := chi.NewRouter()

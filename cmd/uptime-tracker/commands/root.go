@@ -201,7 +201,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				logger.WithError(err).Fatal("failed to start direct dmsg client.")
 			}
-
+			utAPI.DmsgServers = dmsgDC.ConnectedServers()
 			defer closeDmsgDC()
 
 			go dmsghttp.UpdateServers(ctx, dClient, dmsgDisc, dmsgDC, logger)
