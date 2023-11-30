@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/sirupsen/logrus v1.8.1
-	github.com/skycoin/dmsg v1.3.12-0.20231120175607-0b6d5135bbc5
+	github.com/skycoin/dmsg v1.3.12-0.20231130180155-65d707cd1b01
 	github.com/skycoin/skywire-utilities v0.0.0-20231120175000-12be4345eb26
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.8.1

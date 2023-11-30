@@ -107,7 +107,7 @@ github.com/pmezard/go-difflib/difflib
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 github.com/sirupsen/logrus/hooks/syslog
-# github.com/skycoin/dmsg v1.3.12-0.20231120175607-0b6d5135bbc5
+# github.com/skycoin/dmsg v1.3.12-0.20231130180155-65d707cd1b01
 ## explicit; go 1.18
 github.com/skycoin/dmsg/internal/servermetrics
 github.com/skycoin/dmsg/pkg/direct
