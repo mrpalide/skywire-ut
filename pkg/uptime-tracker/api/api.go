@@ -15,14 +15,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skywire-ut/internal/utmetrics"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/store"
 
 	"github.com/skycoin/skywire-utilities/pkg/buildinfo"
 	"github.com/skycoin/skywire-utilities/pkg/cipher"
@@ -58,7 +58,8 @@ type API struct {
 	storeUptimesCutoff     int
 	storeUptimesPath       string
 
-	dmsgAddr string
+	dmsgAddr    string
+	DmsgServers []string
 }
 
 // PrivateAPI register all the PrivateAPI endpoints.
@@ -71,9 +72,10 @@ type PrivateAPI struct {
 
 // HealthCheckResponse is struct of /health endpoint
 type HealthCheckResponse struct {
-	BuildInfo *buildinfo.Info `json:"build_info,omitempty"`
-	StartedAt time.Time       `json:"started_at,omitempty"`
-	DmsgAddr  string          `json:"dmsg_address,omitempty"`
+	BuildInfo   *buildinfo.Info `json:"build_info,omitempty"`
+	StartedAt   time.Time       `json:"started_at,omitempty"`
+	DmsgAddr    string          `json:"dmsg_address,omitempty"`
+	DmsgServers []string        `json:"dmsg_servers,omitempty"`
 }
 
 // New constructs a new API instance.
@@ -92,6 +94,7 @@ func New(log logrus.FieldLogger, s store.Store, nonceStore httpauth.NonceStore, 
 		storeUptimesCutoff:          storeDataCutoff,
 		storeUptimesPath:            storeDataPath,
 		dmsgAddr:                    dmsgAddr,
+		DmsgServers:                 []string{},
 	}
 
 	r := chi.NewRouter()
@@ -344,7 +347,7 @@ func (api *API) handleVisors(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sendGone(w http.ResponseWriter, r *http.Request) {
+func sendGone(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusGone)
 }
 
@@ -554,9 +557,10 @@ func (api *API) handleUptime(w http.ResponseWriter, r *http.Request) {
 func (api *API) health(w http.ResponseWriter, r *http.Request) {
 	info := buildinfo.Get()
 	api.writeJSON(w, r, http.StatusOK, HealthCheckResponse{
-		BuildInfo: info,
-		StartedAt: api.startedAt,
-		DmsgAddr:  api.dmsgAddr,
+		BuildInfo:   info,
+		StartedAt:   api.startedAt,
+		DmsgAddr:    api.dmsgAddr,
+		DmsgServers: api.DmsgServers,
 	})
 }
 

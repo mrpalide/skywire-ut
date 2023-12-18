@@ -10,8 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
+	"github.com/skycoin/skywire-ut/internal/utmetrics"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

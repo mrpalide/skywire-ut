@@ -433,7 +433,7 @@ func (ce *Client) dialSession(ctx context.Context, entry *disc.Entry) (cs Client
 			// We should only report an error when client is not closed.
 			// Also, when the client is closed, it will automatically delete all sessions.
 			ce.errCh <- fmt.Errorf("failed to serve dialed session to %s: %v", dSes.RemotePK(), err)
-			ce.delSession(ctx, dSes.RemotePK(), false)
+			ce.delSession(ctx, dSes.RemotePK())
 		}
 
 		// Trigger disconnect callback.
@@ -461,6 +461,25 @@ func (ce *Client) AllStreams() (out []*Stream) {
 
 	ce.porter.RangePortValuesAndChildren(fn)
 	return out
+}
+
+// AllEntries returns all the entries registered in discovery
+func (ce *Client) AllEntries(ctx context.Context) (entries []string, err error) {
+	err = netutil.NewDefaultRetrier(ce.log).Do(ctx, func() error {
+		entries, err = ce.dc.AllEntries(ctx)
+		return err
+	})
+	return entries, err
+}
+
+// ConnectedServersPK return keys of all connected dmsg servers
+func (ce *Client) ConnectedServersPK() []string {
+	sessions := ce.allClientSessions(ce.porter)
+	addrs := make([]string, len(sessions))
+	for i, s := range sessions {
+		addrs[i] = s.RemotePK().String()
+	}
+	return addrs
 }
 
 // ConnectionsSummary associates connected clients, and the servers that connect such clients.

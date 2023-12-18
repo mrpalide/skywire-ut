@@ -8,15 +8,16 @@ import (
 	"log/syslog"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/SkycoinPro/skywire-services/internal/pg"
-	"github.com/SkycoinPro/skywire-services/internal/utmetrics"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/api"
-	"github.com/SkycoinPro/skywire-services/pkg/uptime-tracker/store"
 	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
+	"github.com/skycoin/skywire-ut/internal/pg"
+	"github.com/skycoin/skywire-ut/internal/utmetrics"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/api"
+	"github.com/skycoin/skywire-ut/pkg/uptime-tracker/store"
 	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 
@@ -204,10 +205,17 @@ var rootCmd = &cobra.Command{
 
 			defer closeDmsgDC()
 
+			go func() {
+				for {
+					utAPI.DmsgServers = dmsgDC.ConnectedServersPK()
+					time.Sleep(time.Second)
+				}
+			}()
+
 			go dmsghttp.UpdateServers(ctx, dClient, dmsgDisc, dmsgDC, logger)
 
 			go func() {
-				if err := dmsghttp.ListenAndServe(ctx, pk, sk, utAPI, dClient, dmsg.DefaultDmsgHTTPPort, config, dmsgDC, logger); err != nil {
+				if err := dmsghttp.ListenAndServe(ctx, sk, utAPI, dClient, dmsg.DefaultDmsgHTTPPort, dmsgDC, logger); err != nil {
 					logger.Errorf("dmsghttp.ListenAndServe utAPI: %v", err)
 					cancel()
 				}
