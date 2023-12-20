@@ -45,6 +45,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/skycoin/noise v0.0.0-20180327030543-2492fe189ae6 // indirect
 	github.com/skycoin/skycoin v0.27.1 // indirect
+	github.com/skycoin/skywire v1.3.16 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
