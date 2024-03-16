@@ -5,12 +5,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/syslog"
 	"os"
 	"strings"
 	"time"
 
-	logrussyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/skycoin/dmsg/pkg/direct"
 	"github.com/skycoin/dmsg/pkg/dmsg"
 	"github.com/skycoin/dmsg/pkg/dmsghttp"
@@ -48,7 +46,6 @@ var (
 	pgPort            string
 	pgMaxOpenConn     int
 	logEnabled        bool
-	syslogAddr        string
 	tag               string
 	ipAPIKey          string
 	enableLoadTesting bool
@@ -72,7 +69,6 @@ func init() {
 	rootCmd.Flags().IntVar(&storeDataCutoff, "store-data-cutoff", 7, "number of days data store in db")
 	rootCmd.Flags().StringVar(&storeDataPath, "store-data-path", "/var/lib/skywire-ut/daily-data", "path of db daily data store")
 	rootCmd.Flags().BoolVarP(&logEnabled, "log", "l", true, "enable request logging")
-	rootCmd.Flags().StringVar(&syslogAddr, "syslog", "", "syslog server address. E.g. localhost:514")
 	rootCmd.Flags().StringVar(&tag, "tag", "uptime_tracker", "logging tag")
 	rootCmd.Flags().StringVar(&ipAPIKey, "ip-api-key", "", "geo API key")
 	rootCmd.Flags().BoolVar(&enableLoadTesting, "enable-load-testing", false, "enable load testing")
@@ -96,13 +92,7 @@ var rootCmd = &cobra.Command{
 
 		const loggerTag = "uptime_tracker"
 		logger := logging.MustGetLogger(loggerTag)
-		if syslogAddr != "" {
-			hook, err := logrussyslog.NewSyslogHook("udp", syslogAddr, syslog.LOG_INFO, tag)
-			if err != nil {
-				logger.Fatalf("Unable to connect to syslog daemon on %v", syslogAddr)
-			}
-			logging.AddHook(hook)
-		}
+
 		var gormDB *gorm.DB
 
 		pk, err := sk.PubKey()
